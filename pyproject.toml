@@ -1,0 +1,52 @@
+stabcodes_repo
+
+Coordinate-free stabilizer-code circuit builder + decoder using Stim, Sinter, and PyMatching.
+You give a stabilizer list and a CNOT layer schedule; the tools build a Stim circuit, derive a DEM, then sweep physical error rates and plot logical error per shot.
+
+Quick start
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+
+To activate the interactive simulation:
+python -m stabcodes.cli.build
+
+1) Build a circuit + DEM from a benchmark file
+
+We ship an example at benchmarks/rotated_surface/d3.txt.
+
+# writes into results/d3_rotated_surface/
+python -m stabcodes.cli.build --out results/d3_rotated_surface < benchmarks/rotated_surface/d3.txt
+
+
+Artifacts:
+results/d3_rotated_surface/circuit.stim
+results/d3_rotated_surface/dem.txt
+results/d3_rotated_surface/build_meta.json (metadata used by the decoder)
+
+2) Run decoding sweeps
+# choose your shot budget and p-list (defaults are fine too)
+python -m stabcodes.decode.run \
+  --meta results/d3_rotated_surface/build_meta.json \
+  --out  results/d3_rotated_surface \
+  --shots 200000 \
+  --plist 0.001,0.003,0.005,0.007,0.009,0.011
+
+
+Outputs:
+results/d3_rotated_surface/metrics.json
+results/d3_rotated_surface/metrics.csv
+results/d3_rotated_surface/plot.png
+Tip: plot.png is a log-log plot of logical error rate vs physical error rate.
+
+python -m stabcodes.decode.run \
+  --meta results/reptition_code/build_meta.json \
+  --out  results/reptition_code \
+  --shots 200000 \
+  --plist 0.001,0.003,0.005,0.007,0.009
+
+python -m stabcodes.decode.run \
+  --meta results/d5_rotated_surface/build_meta.json \
+  --out  results/d5_rotated_surface \
+  --shots 200000 \
+  --plist 0.001,0.003,0.005,0.007,0.009

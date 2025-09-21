@@ -1,0 +1,179 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+
+\title{\textbf{stabcodes\_repo}\\Coordinate-free stabilizer-code circuit builder \& decoder}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Overview}
+\textbf{stabcodes\_repo} builds Stim circuits and detector-error models (DEM) from pasted
+or file-based stabilizer lists plus a per-stabilizer CNOT layer schedule, then sweeps
+physical error rates using Sinter + PyMatching and plots the logical error per shot.
+
+\paragraph{Outputs}
+\begin{itemize}[itemsep=2pt, topsep=4pt]
+  \item \texttt{circuit.stim} (Stim circuit)
+  \item \texttt{dem.txt} (Detector Error Model, when construction succeeds)
+  \item \texttt{build\_meta.json} (metadata for decoding sweeps)
+  \item \texttt{metrics.\{json,csv\}}, \texttt{plot.png}
+\end{itemize}
+
+\section*{Install}
+\begin{verbatim}
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+\end{verbatim}
+
+\section*{Quick Start}
+
+\subsection*{A) Interactive build}
+\begin{verbatim}
+python -m stabcodes.cli.build
+\end{verbatim}
+Paste stabilizers (or dense Pauli rows), then enter:
+\begin{itemize}[itemsep=2pt, topsep=2pt]
+  \item rounds R
+  \item layers per round L
+  \item per-stabilizer layer numbers for each support index (1..L), in order
+\end{itemize}
+
+\subsection*{B) Build from a benchmark file}
+Example (d=3 rotated surface):
+\begin{verbatim}
+python -m stabcodes.cli.build \
+  --out results/d3_rotated_surface \
+  < benchmarks/rotated_surface/d3.txt
+\end{verbatim}
+
+\subsection*{Decode and plot}
+\begin{verbatim}
+python -m stabcodes.decode.run \
+  --meta results/<run>/build_meta.json \
+  --out  results/<run> \
+  --shots 200000 \
+  --plist 0.001,0.003,0.005,0.007,0.009
+\end{verbatim}
+
+\section*{Input File Format}
+Benchmark files are plain text:
+\begin{verbatim}
+# stabilizers (one per line), sparse form like:
+Z0 Z1 Z5 Z7
+X1 X2 X4 X5
+... (more lines)
+<blank line>
+R
+L
+# One line per stabilizer: comma-separated layer numbers (1..L),
+# matching the order of indices shown for that stabilizer.
+4,2,3,1
+2,1
+...
+\end{verbatim}
+
+Notes:
+\begin{itemize}[itemsep=2pt, topsep=2pt]
+  \item Stabilizers can be sparse (\verb|Zk|/\verb|Xk| tokens) or dense Pauli strings.
+  \item The blank line separates stabilizers from numeric parameters.
+  \item Each layer-assignment line has exactly as many numbers as the stabilizer weight.
+\end{itemize}
+
+\section*{Included Benchmarks}
+\begin{itemize}[itemsep=2pt, topsep=2pt]
+  \item \texttt{benchmarks/rotated\_surface/d3.txt}
+  \item \texttt{benchmarks/rotated\_surface/d5.txt}
+  \item \texttt{benchmarks/reption\_code/repetition.txt}
+  \item \texttt{benchmarks/color\_code/713\_color\_code.txt}
+\end{itemize}
+
+\section*{Reproducing Runs}
+
+\subsection*{d=3 rotated surface}
+\begin{verbatim}
+python -m stabcodes.cli.build \
+  --out results/d3_rotated_surface \
+  < benchmarks/rotated_surface/d3.txt
+
+python -m stabcodes.decode.run \
+  --meta results/d3_rotated_surface/build_meta.json \
+  --out  results/d3_rotated_surface \
+  --shots 200000 \
+  --plist 0.001,0.003,0.005,0.007,0.009
+\end{verbatim}
+
+\subsection*{d=5 rotated surface}
+\begin{verbatim}
+python -m stabcodes.cli.build \
+  --out results/d5_rotated_surface \
+  < benchmarks/rotated_surface/d5.txt
+
+python -m stabcodes.decode.run \
+  --meta results/d5_rotated_surface/build_meta.json \
+  --out  results/d5_rotated_surface \
+  --shots 200000 \
+  --plist 0.001,0.003,0.005,0.007,0.009
+\end{verbatim}
+
+\subsection*{Repetition code (Z-only)}
+\begin{verbatim}
+python -m stabcodes.cli.build \
+  --out results/reptition_code \
+  < benchmarks/reption_code/repetition.txt
+
+python -m stabcodes.decode.run \
+  --meta results/reptition_code/build_meta.json \
+  --out  results/reptition_code \
+  --shots 200000 \
+  --plist 0.001,0.003,0.005,0.007,0.009
+\end{verbatim}
+
+\subsection*{“713 color code” (Z-only)}
+\begin{verbatim}
+python -m stabcodes.cli.build \
+  --out results/713_color_code \
+  < benchmarks/color_code/713_color_code.txt
+
+python -m stabcodes.decode.run \
+  --meta results/713_color_code/build_meta.json \
+  --out  results/713_color_code \
+  --shots 200000 \
+  --plist 0.001,0.003,0.005,0.007,0.009
+\end{verbatim}
+
+\section*{Troubleshooting}
+\begin{description}[style=unboxed,leftmargin=0cm]
+\item[“expected at least one line of stabilizers”]
+Ensure your file contains only stabilizer lines before the blank line (no prompts or \verb|>| prefixes).
+\item[DEM fails: “non-deterministic observables”]
+For Z-only circuits, the builder uses Z resets/measures with a Z logical; for CSS circuits, provide both X and Z stabilizers and a valid layer schedule.
+\item[Decoder fallback]
+If the compiled sampler fails on your platform, the script falls back to Stim sampling + PyMatching and still produces metrics/plots.
+\item[Different error rates than a reference]
+Confirm stabilizer content/order, layer assignments, R/L, shot count, and \verb|--plist| match; also check noise knobs if you edited them.
+\end{description}
+
+\section*{Repo Layout}
+\begin{verbatim}
+benchmarks/
+  rotated_surface/   d3.txt, d5.txt
+  reption_code/      repetition.txt
+  color_code/        713_color_code.txt
+results/
+  <run>/ circuit.stim, dem.txt, build_meta.json, metrics, plot
+src/stabcodes/
+  cli/build.py       # builder (interactive / file)
+  decode/run.py      # decode + plot
+  io/, model/, schedule/, build/
+\end{verbatim}
+
+\section*{License}
+MIT. See \texttt{LICENSE}.
+\end{document}

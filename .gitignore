@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Test/IDE
+.pytest_cache/
+.vscode/
+
+# Outputs
+results/
+docs/*.pdf
+
+# Misc
+*.log
