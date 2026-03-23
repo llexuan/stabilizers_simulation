@@ -1,232 +1,36 @@
-stabcodes_repo
+# stabcodes_repo
 
-Coordinate-free stabilizer-code circuit builder & decoder
+**Coordinate-free stabilizer-code circuit builder & decoder**
 
-Overview
+---
 
-stabcodes_repo builds Stim circuits and Detector Error Models (DEM) from:
+## Overview
 
-Stabilizer lists (pasted interactively or loaded from file)
+`stabcodes_repo` builds **Stim circuits** and **Detector Error Models (DEM)** from:
 
-A per-stabilizer CNOT layer schedule
+- Stabilizer lists (pasted interactively or loaded from file)  
+- A per-stabilizer CNOT layer schedule  
 
-It then performs physical error rate sweeps using Sinter + PyMatching and plots the logical error per shot.
+It then performs physical error rate sweeps using **Sinter + PyMatching** and plots the logical error per shot.
 
-This repository is designed to support coordinate-free stabilizer-code construction and decoding experiments.
+This repository is designed to support **coordinate-free stabilizer-code construction and decoding experiments**.
 
-Features
+---
 
-Build Stim circuits from sparse or dense stabilizer descriptions
+## Features
 
-Generate detector error models (when determinism conditions are satisfied)
+- Build Stim circuits from sparse or dense stabilizer descriptions  
+- Generate Detector Error Models (when determinism conditions are satisfied)  
+- Sweep physical error rates  
+- Decode with PyMatching  
+- Output metrics in JSON and CSV  
+- Automatically generate logical error rate plots  
 
-Sweep physical error rates
+---
 
-Decode with PyMatching
+## Installation
 
-Output metrics in JSON and CSV
-
-Automatically generate logical error rate plots
-
-Installation
+```bash
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-
-Quick Start
-A) Interactive Build
-python -m stabcodes.cli.build
-
-
-You will be prompted to:
-
-Paste stabilizers (sparse or dense Pauli rows)
-
-Enter:
-
-Number of rounds R
-
-Layers per round L
-
-Per-stabilizer layer numbers (1..L) for each support index
-
-B) Build from Benchmark File
-
-Example: d=3 rotated surface code
-
-python -m stabcodes.cli.build \
-  --out results/d3_rotated_surface \
-  < benchmarks/rotated_surface/d3.txt
-
-Decode and Plot
-python -m stabcodes.decode.run \
-  --meta results/<run>/build_meta.json \
-  --out  results/<run> \
-  --shots 200000 \
-  --plist 0.001,0.003,0.005,0.007,0.009
-
-Output Files
-
-Each run produces:
-
-circuit.stim — Stim circuit
-
-dem.txt — Detector Error Model (if successful)
-
-build_meta.json — Metadata for decoding sweeps
-
-metrics.json
-
-metrics.csv
-
-plot.png — Logical error rate plot
-
-Input File Format
-
-Benchmark files are plain text with the following structure:
-
-# Stabilizers (one per line), sparse form example:
-Z0 Z1 Z5 Z7
-X1 X2 X4 X5
-...
-
-<blank line>
-
-R
-L
-
-# One line per stabilizer:
-# comma-separated layer numbers (1..L),
-# matching the order of indices shown above
-4,2,3,1
-2,1
-...
-
-Important Notes
-
-Stabilizers may be:
-
-Sparse tokens (Zk, Xk)
-
-Dense Pauli strings
-
-A blank line must separate stabilizers from numeric parameters
-
-Each layer assignment line must match the stabilizer weight exactly
-
-Included Benchmarks
-benchmarks/
-  rotated_surface/
-    d3.txt
-    d5.txt
-  reption_code/
-    repetition.txt
-  color_code/
-    713_color_code.txt
-
-Reproducing Experiments
-d=3 Rotated Surface Code
-python -m stabcodes.cli.build \
-  --out results/d3_rotated_surface \
-  < benchmarks/rotated_surface/d3.txt
-
-python -m stabcodes.decode.run \
-  --meta results/d3_rotated_surface/build_meta.json \
-  --out  results/d3_rotated_surface \
-  --shots 200000 \
-  --plist 0.001,0.003,0.005,0.007,0.009
-
-d=5 Rotated Surface Code
-python -m stabcodes.cli.build \
-  --out results/d5_rotated_surface \
-  < benchmarks/rotated_surface/d5.txt
-
-python -m stabcodes.decode.run \
-  --meta results/d5_rotated_surface/build_meta.json \
-  --out  results/d5_rotated_surface \
-  --shots 200000 \
-  --plist 0.001,0.003,0.005,0.007,0.009
-
-Repetition Code (Z-only)
-python -m stabcodes.cli.build \
-  --out results/repetition_code \
-  < benchmarks/reption_code/repetition.txt
-
-python -m stabcodes.decode.run \
-  --meta results/repetition_code/build_meta.json \
-  --out  results/repetition_code \
-  --shots 200000 \
-  --plist 0.001,0.003,0.005,0.007,0.009
-
-713 Color Code (Z-only)
-python -m stabcodes.cli.build \
-  --out results/713_color_code \
-  < benchmarks/color_code/713_color_code.txt
-
-python -m stabcodes.decode.run \
-  --meta results/713_color_code/build_meta.json \
-  --out  results/713_color_code \
-  --shots 200000 \
-  --plist 0.001,0.003,0.005,0.007,0.009
-
-Troubleshooting
-“expected at least one line of stabilizers”
-
-Ensure:
-
-Stabilizer lines appear before the blank line
-
-No prompt characters (e.g., >) are included
-
-No extra text appears before stabilizers
-
-DEM fails: “non-deterministic observables”
-
-For Z-only circuits:
-
-Builder uses Z resets and measures with a Z logical
-
-For CSS circuits:
-
-Provide both X and Z stabilizers
-
-Ensure a valid layer schedule
-
-Decoder fallback
-
-If compiled sampling fails on your platform, the script automatically falls back to:
-
-Stim sampling
-
-PyMatching decoding
-
-Metrics and plots will still be generated.
-
-Logical error rates differ from reference
-
-Verify:
-
-Stabilizer order and content
-
-Layer assignments
-
-R and L values
-
-Shot count
-
---plist values
-
-Noise parameters (if modified)
-
-Repository Layout
-benchmarks/
-results/
-src/stabcodes/
-  cli/
-    build.py
-  decode/
-    run.py
-  io/
-  model/
-  schedule/
-  build/
