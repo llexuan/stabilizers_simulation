@@ -91,7 +91,7 @@ benchmarks/
   rotated_surface/
     d3.txt
     d5.txt
-  reption_code/
+  repetition_code/
     repetition.txt
   color_code/
     713_color_code.txt
@@ -119,7 +119,7 @@ python -m stabcodes.decode.run \
 Repetition Code (Z-only)
 python -m stabcodes.cli.build \
   --out results/repetition_code \
-  < benchmarks/reption_code/repetition.txt
+  < benchmarks/repetition_code/repetition.txt
 
 python -m stabcodes.decode.run \
   --meta results/repetition_code/build_meta.json \
@@ -145,13 +145,13 @@ Stabilizers appear before the blank line
 No extra text or prompt symbols are included
 DEM fails (non-deterministic observables)
 Z-only circuits:
-Use Z resets and Z logicals
+Builder uses Z resets and Z logicals
 CSS circuits:
-Include both X and Z stabilizers
+Provide both X and Z stabilizers
 Ensure valid scheduling
 Decoder fallback
 
-If compiled sampling fails, the system falls back to:
+If compiled sampling fails, the system automatically falls back to:
 
 Stim sampling
 PyMatching decoding
