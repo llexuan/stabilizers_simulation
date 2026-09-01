@@ -1,182 +1,272 @@
-stabcodes_repo
+# Stabilizer Circuit Simulation
 
-Coordinate-free stabilizer-code circuit builder & decoder
+This project builds noisy stabilizer-code circuits, generates Stim detector error
+models, decodes sampled detector events with PyMatching, and measures logical
+error rates. Its main purpose is to compare how stabilizer definitions and CNOT
+orders affect logical performance.
 
-Overview
+## What the program does
 
-stabcodes_repo builds Stim circuits and Detector Error Models (DEM) from stabilizer descriptions and scheduling information, and evaluates their performance under noise.
+For a benchmark input, the program:
 
-The system supports:
+1. Reads the X and Z stabilizers.
+2. Reads the number of syndrome rounds and CNOT layers.
+3. Reads the CNOT-layer assignment for each stabilizer.
+4. Builds a noisy Stim circuit.
+5. Generates a detector error model (DEM).
+6. Samples the circuit at several physical error probabilities.
+7. Decodes the samples with PyMatching.
+8. Reports the logical error rate and its 95% confidence interval.
+9. Saves the circuit, numerical results, and a log-log plot.
 
-Constructing circuits from stabilizer lists
-Applying per-stabilizer CNOT layer schedules
-Generating Detector Error Models (when valid)
-Running decoding experiments using Sinter + PyMatching
-Plotting logical error rates across physical noise levels
+In Python this process is normally called **running** the program, rather than
+compiling it.
 
-This repository is designed for coordinate-free stabilizer-code construction, simulation, and decoding experiments, with a focus on flexibility and system-level evaluation.
+## Requirements
 
-Features
-Build Stim circuits from sparse or dense stabilizer descriptions
-Generate Detector Error Models (DEM)
-Perform physical error rate sweeps
-Decode using PyMatching
-Export results in JSON and CSV formats
-Automatically generate logical error rate plots
-Installation
+- Python 3.10 or newer
+- NumPy
+- Matplotlib
+- Stim
+- PyMatching
+
+Create an environment and install the dependencies:
+
+```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
-Quick Start
-Interactive Build
-python -m stabcodes.cli.build
+python -m pip install numpy matplotlib stim pymatching
+```
 
-You will be prompted to:
+Run commands below from the repository root.
 
-Paste stabilizers (sparse or dense Pauli form)
-Enter:
-Number of rounds R
-Layers per round L
-Per-stabilizer layer assignments (1..L)
-Build from Benchmark File
+## Recommended: build and decode automatically
 
-Example: d=3 rotated surface code
+Give the automatic runner a benchmark path:
 
-python -m stabcodes.cli.build \
-  --out results/d3_rotated_surface \
-  < benchmarks/rotated_surface/d3.txt
-Decode and Plot
-python -m stabcodes.decode.run \
-  --meta results/<run>/build_meta.json \
-  --out  results/<run> \
-  --shots 200000 \
-  --plist 0.001,0.003,0.005,0.007,0.009
-Output Files
+```bash
+PYTHONPATH=src python -m stabcodes.run \
+  benchmarks/rotated_surface/d3.txt
+```
 
-Each run produces:
+It asks for three simulation settings:
 
-circuit.stim — Stim circuit
-dem.txt — Detector Error Model (if valid)
-build_meta.json — Metadata for decoding
-metrics.json
-metrics.csv
-plot.png — Logical error rate plot
-Input File Format
+```text
+Shots per physical error rate [200000]:
+Physical error rates (comma-separated) [0.001,0.003,0.005,0.007,0.009]:
+Random seed [12345]:
+```
 
-Benchmark files follow this structure:
+Press Enter without typing anything to accept a displayed default.
 
-# Stabilizers (one per line)
-Z0 Z1 Z5 Z7
+- **Shots** controls the number of Monte Carlo samples at each physical error
+  rate. More shots reduce statistical uncertainty but take longer.
+- **Physical error rates** (`p` values) determine the points evaluated and
+  plotted.
+- **Seed** makes random sampling reproducible. Use the same seed, shot count,
+  and `p` values when comparing CNOT schedules.
+
+The output directory is derived automatically from the benchmark path. For
+example:
+
+```text
+benchmarks/rotated_surface/d3.txt
+```
+
+produces:
+
+```text
+results/rotated_surface/d3/
+```
+
+An output directory can optionally be selected explicitly:
+
+```bash
+PYTHONPATH=src python -m stabcodes.run \
+  benchmarks/rotated_surface/d3.txt \
+  --out results/my_d3_experiment
+```
+
+## Included benchmarks
+
+Run the d=3 rotated surface code:
+
+```bash
+PYTHONPATH=src python -m stabcodes.run \
+  benchmarks/rotated_surface/d3.txt
+```
+
+Run the d=5 rotated surface code:
+
+```bash
+PYTHONPATH=src python -m stabcodes.run \
+  benchmarks/rotated_surface/d5.txt
+```
+
+Run the repetition code:
+
+```bash
+PYTHONPATH=src python -m stabcodes.run \
+  benchmarks/reptition_code/reptition_code.txt
+```
+
+The `reptition_code` directory and filename retain their current misspelling.
+
+Run the 7-qubit color-code benchmark:
+
+```bash
+PYTHONPATH=src python -m stabcodes.run \
+  benchmarks/color_code/713_color_code.txt
+```
+
+## Benchmark input format
+
+A benchmark text file contains:
+
+1. One stabilizer per line.
+2. A blank line terminating the stabilizer block.
+3. The number of measurement rounds, `R`.
+4. The number of CNOT layers per round, `L`.
+5. One layer-assignment line for every stabilizer.
+
+Example:
+
+```text
+Z0 Z1 Z3 Z4
+Z2 Z5
+X0 X1
 X1 X2 X4 X5
-...
 
-<blank line>
-
-R
-L
-
-# One line per stabilizer:
-# comma-separated layer numbers (1..L)
+1
+4
 4,2,3,1
+4,3
 2,1
-...
-Important Notes
-Stabilizers can be:
-Sparse (e.g., Z0, X1)
-Dense Pauli strings
-A blank line must separate stabilizers from parameters
-Each layer assignment must match the stabilizer weight exactly
-Included Benchmarks
-benchmarks/
-  rotated_surface/
-    d3.txt
-    d5.txt
-  repetition_code/
-    repetition.txt
-  color_code/
-    713_color_code.txt
-Reproducing Experiments
-d=3 Rotated Surface Code
-python -m stabcodes.cli.build \
-  --out results/d3_rotated_surface \
+4,3,2,1
+```
+
+Here:
+
+- `R = 1`
+- `L = 4`
+- Schedule lines correspond to the stabilizers in their original order: all Z
+  stabilizers followed by all X stabilizers.
+
+For `Z0 Z1 Z3 Z4`, the support is sorted as `[0, 1, 3, 4]`. Its assignment
+`4,2,3,1` means:
+
+- qubit 4 participates in layer 1;
+- qubit 1 participates in layer 2;
+- qubit 3 participates in layer 3;
+- qubit 0 participates in layer 4.
+
+Its effective local CNOT order is therefore `4 -> 1 -> 3 -> 0`.
+
+Every assignment must:
+
+- contain one number per qubit in that stabilizer;
+- use layer numbers from `1` through `L`;
+- appear in the same order as the stabilizer definitions.
+
+The current circuit builder schedules stabilizers serially. The assignments
+control CNOT order within each stabilizer; they do not represent globally
+parallel layers across all stabilizers.
+
+## Comparing CNOT orders
+
+Create separate benchmark files with the same stabilizers but different final
+schedule lines:
+
+```text
+benchmarks/rotated_surface/d3_order_a.txt
+benchmarks/rotated_surface/d3_order_b.txt
+```
+
+Run each benchmark separately and use identical shots, physical error rates,
+and seeds. Their automatically derived output directories will remain separate:
+
+```text
+results/rotated_surface/d3_order_a/
+results/rotated_surface/d3_order_b/
+```
+
+Only the CNOT assignments should change when the goal is to isolate the effect
+of ordering.
+
+## Output files
+
+An automatic run produces:
+
+- `circuit.stim` — generated Stim circuit.
+- `dem.txt` — detector error model.
+- `build_meta.json` — circuit metadata used during decoding.
+- `metrics.json` — structured simulation results.
+- `metrics.csv` — spreadsheet-friendly simulation results.
+- `plot.png` — physical versus logical error-rate plot.
+- `run_config.json` — benchmark path, shots, probabilities, seed, and
+  completion time.
+
+Each metrics record contains:
+
+- physical error probability;
+- shot count;
+- observed logical failures;
+- logical error rate per shot;
+- lower and upper 95% confidence limits;
+- the sampling seed used for that probability.
+
+`n` in the console and plot legend means the number of data qubits. For the
+d=3 rotated surface benchmark, `n=9`; for d=5, `n=25`.
+
+## Advanced: run build and decode separately
+
+Build only:
+
+```bash
+PYTHONPATH=src python -m stabcodes.cli.build \
+  --out results/manual_d3 \
   < benchmarks/rotated_surface/d3.txt
+```
 
-python -m stabcodes.decode.run \
-  --meta results/d3_rotated_surface/build_meta.json \
-  --out  results/d3_rotated_surface \
+Decode an existing build:
+
+```bash
+PYTHONPATH=src python -m stabcodes.decode.run \
+  --meta results/manual_d3/build_meta.json \
+  --out results/manual_d3 \
   --shots 200000 \
-  --plist 0.001,0.003,0.005,0.007,0.009
-d=5 Rotated Surface Code
-python -m stabcodes.cli.build \
-  --out results/d5_rotated_surface \
-  < benchmarks/rotated_surface/d5.txt
+  --plist 0.001,0.003,0.005,0.007,0.009 \
+  --seed 12345
+```
 
-python -m stabcodes.decode.run \
-  --meta results/d5_rotated_surface/build_meta.json \
-  --out  results/d5_rotated_surface \
-  --shots 200000 \
-  --plist 0.001,0.003,0.005,0.007,0.009
-Repetition Code (Z-only)
-python -m stabcodes.cli.build \
-  --out results/repetition_code \
-  < benchmarks/repetition_code/repetition.txt
+The automatic runner is recommended for normal use because it performs both
+steps and records the selected settings.
 
-python -m stabcodes.decode.run \
-  --meta results/repetition_code/build_meta.json \
-  --out  results/repetition_code \
-  --shots 200000 \
-  --plist 0.001,0.003,0.005,0.007,0.009
-713 Color Code (Z-only)
-python -m stabcodes.cli.build \
-  --out results/713_color_code \
-  < benchmarks/color_code/713_color_code.txt
+## Troubleshooting
 
-python -m stabcodes.decode.run \
-  --meta results/713_color_code/build_meta.json \
-  --out  results/713_color_code \
-  --shots 200000 \
-  --plist 0.001,0.003,0.005,0.007,0.009
-Troubleshooting
-Missing stabilizers error
+### Module `stabcodes` cannot be found
 
-Ensure:
+Run from the repository root and include `PYTHONPATH=src`:
 
-Stabilizers appear before the blank line
-No extra text or prompt symbols are included
-DEM fails (non-deterministic observables)
-Z-only circuits:
-Builder uses Z resets and Z logicals
-CSS circuits:
-Provide both X and Z stabilizers
-Ensure valid scheduling
-Decoder fallback
+```bash
+PYTHONPATH=src python -m stabcodes.run benchmarks/rotated_surface/d3.txt
+```
 
-If compiled sampling fails, the system automatically falls back to:
+### Benchmark parsing fails
 
-Stim sampling
-PyMatching decoding
+Check that:
 
-Results will still be generated.
+- a blank line follows the stabilizer definitions;
+- every stabilizer uses only X operators or only Z operators;
+- every schedule has one entry per stabilizer qubit;
+- every layer number is between `1` and `L`.
 
-Incorrect logical error rates
+### Detector error model construction fails
 
-Check:
+Check that X and Z stabilizers commute and that the chosen circuit produces
+deterministic detectors and logical observables.
 
-Stabilizer definitions
-Layer assignments
-R and L values
-Shot count
---plist values
-Noise parameters
-Repository Layout
-benchmarks/
-results/
-src/stabcodes/
-  cli/
-    build.py
-  decode/
-    run.py
-  io/
-  model/
-  schedule/
-  build/
+### Results vary between runs
+
+Use the same seed, shots, and physical error rates. Small differences are
+expected when seeds differ because decoding uses Monte Carlo sampling.
